@@ -1,0 +1,56 @@
+name: openchat
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=postgresql://openchat:password@postgres:5432/openchat
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.api.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4000",
+        "--reload",
+      ]
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: rebuild
+          path: ./pyproject.toml
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=openchat
+      - POSTGRES_USER=openchat
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openchat -d openchat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
