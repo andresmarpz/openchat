@@ -1,16 +1,25 @@
+"use client";
+
 import InputBox from "~/components/primitives/InputBox";
 import { useThread } from "~/hooks/use-thread";
 
 export default function Chat() {
-  const { messages } = useThread();
+  const { messages, submit } = useThread();
 
   return (
     <div>
-      {/* Message list */}
-      <div></div>
+      <ul>
+        {messages.map((message) => {
+          return (
+            <li key={message.id}>
+              {message.type === "human" ? "You" : "AI"}
+              {String(message.content)}
+            </li>
+          );
+        })}
+      </ul>
 
-      {/* Input box */}
-      <InputBox />
+      <InputBox onSendMessage={(message) => submit({ query: message })} />
     </div>
   );
 }

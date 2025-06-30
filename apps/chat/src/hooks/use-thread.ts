@@ -1,94 +1,119 @@
+"use client";
+
 import { useCallback, useState } from "react";
 import { AIMessage, HumanMessage, Message } from "@langchain/langgraph-sdk";
+import { createClient } from "~/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export function useThread() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const client = createClient();
 
-  const submit = useCallback(
-    async (input: { query: string }) => {
-      const accMessages = [
-        ...messages,
-        {
-          type: "human",
-          content: input.query,
-        } satisfies HumanMessage,
-      ];
+  const submit = useCallback(async (input: { query: string }) => {
+    const userMessage: HumanMessage = {
+      type: "human",
+      content: input.query,
+      id: crypto.randomUUID(),
+    };
 
-      const response = await fetch(`${BACKEND_URL}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input: {
-            messages: accMessages,
-          },
-        }),
-      });
+    setMessages((prev) => [...prev, userMessage]);
 
-      const reader = response.body
-        ?.pipeThrough(new TextDecoderStream())
-        .getReader();
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    const token = session?.access_token;
 
-      if (!reader) throw Error();
+    console.log(token);
 
-      let buffer = "";
+    const response = await fetch(`${BACKEND_URL}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        input: { messages: [{ role: "user", content: input.query }] },
+      }),
+    });
+
+    const reader = response.body
+      ?.pipeThrough(new TextDecoderStream())
+      .getReader();
+
+    if (!reader) throw Error();
+
+    let buffer = "";
+    let currentMessageId: string | null = null;
+    let accumulatedContent = "";
+
+    try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += value;
-        let eventMatch;
-        // Process all complete SSE events in the buffer
-        while ((eventMatch = buffer.match(/event: (.+)\ndata: (.+)\n\n/))) {
-          const [, event, data] = eventMatch;
-          let dataObject;
-          try {
-            dataObject = JSON.parse(data) as {
-              content: string;
-              type: "AIMessageChunk";
-              name: string;
-              id: string;
-            };
-          } catch (e) {
-            console.error("Failed to parse data as JSON:", data, e);
-            // Remove the processed event from the buffer anyway to avoid infinite loop
-            buffer = buffer.slice(eventMatch.index! + eventMatch[0].length);
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("event: messages")) {
             continue;
           }
 
-          const msgIndex = messages.findIndex(
-            (msg) => msg.id === dataObject.id
-          );
-          if (msgIndex < 0) {
-            setMessages((val) => [
-              ...val,
-              {
-                content: dataObject.content,
-                id: dataObject.id,
-                type: "ai",
-              } satisfies AIMessage,
-            ]);
-          } else {
-            setMessages((val) =>
-              val.map((msg) =>
-                msg.id === dataObject.id
-                  ? {
-                      ...msg,
-                      content: msg.content + dataObject.content,
-                    }
-                  : msg
-              )
-            );
-          }
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
 
-          // Remove the processed event from the buffer
-          buffer = buffer.slice(eventMatch.index! + eventMatch[0].length);
+              if (data.type === "AIMessageChunk") {
+                if (!currentMessageId) {
+                  currentMessageId = data.id;
+                  accumulatedContent = data.content || "";
+
+                  const chunkMessage: AIMessage = {
+                    type: "ai",
+                    content: accumulatedContent,
+                    id: currentMessageId!,
+                  };
+
+                  setMessages((prev) => [...prev, chunkMessage]);
+                } else if (data.id === currentMessageId) {
+                  accumulatedContent += data.content || "";
+
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === currentMessageId
+                        ? { ...msg, content: accumulatedContent }
+                        : msg
+                    )
+                  );
+                }
+              } else if (data.type === "ai" && data.id === currentMessageId) {
+                const finalMessage: AIMessage = {
+                  type: "ai",
+                  content: data.content,
+                  id: data.id,
+                };
+
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === currentMessageId ? finalMessage : msg
+                  )
+                );
+
+                currentMessageId = null;
+                accumulatedContent = "";
+              }
+            } catch (error) {
+              console.error("Error parsing SSE data:", error);
+            }
+          }
         }
       }
-    },
-    [messages]
-  );
+    } finally {
+      reader.releaseLock();
+    }
+  }, []);
 
   return {
     submit,

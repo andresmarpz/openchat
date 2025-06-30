@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "~/lib/supabase/server";
 import { InfoIcon } from "lucide-react";
+import Chat from "~/components/chat/chat";
 
 export default async function ChatPage() {
   const supabase = await createClient();
@@ -25,6 +26,10 @@ export default async function ChatPage() {
         <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
           {JSON.stringify(data.user, null, 2)}
         </pre>
+      </div>
+
+      <div>
+        <Chat />
       </div>
     </div>
   );

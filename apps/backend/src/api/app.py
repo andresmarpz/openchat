@@ -1,11 +1,12 @@
 import json
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from src.core.middleware import get_current_user
 from src.core.settings import get_settings
 from src.lg.graph import graph
 
@@ -42,9 +43,18 @@ async def handle_graph_stream(input: dict):
 
 
 @app.post("/api/v1/chat")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, user: dict = Depends(get_current_user)):
     """Chat endpoint."""
+    # Add user context to the input
+    input_with_user = {
+        **request.input,
+        "user_id": user["user_id"],
+        "user_email": user["email"],
+    }
+
+    print(user)
+
     return StreamingResponse(
-        handle_graph_stream(input=request.input),
+        handle_graph_stream(input=input_with_user),
         media_type="text/event-stream",
     )

@@ -23,6 +23,12 @@ class Settings(BaseSettings):
         description="PostgreSQL database URL",
     )
 
+    # Supabase settings
+    SUPABASE_URL: str = Field(..., description="Supabase project URL")
+    SUPABASE_SERVICE_ROLE_KEY: str = Field(
+        ..., description="Supabase service role key for server-side operations"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

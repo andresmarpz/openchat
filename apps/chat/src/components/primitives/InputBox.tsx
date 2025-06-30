@@ -4,11 +4,10 @@ import { useForm } from "react-hook-form";
 import { Button } from "~/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
-import { useThread } from "~/hooks/use-thread";
 import { cn } from "~/lib/utils";
 
 interface Props {
-  onSendMessage: (message: string) => unknown;
+  onSendMessage: (message: string) => Promise<unknown>;
 }
 
 export default function InputBox({ onSendMessage }: Props) {
@@ -18,44 +17,12 @@ export default function InputBox({ onSendMessage }: Props) {
     },
   });
 
-  const { messages, submit } = useThread();
-
   const handleSubmit = form.handleSubmit(async (data) => {
-    // const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    // const response = await fetch(`${backendUrl}/chat`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({
-    //     input: {
-    //       messages: [{ role: "user", content: "hiii" }],
-    //     },
-    //   }),
-    // });
-    // const reader = response.body?.getReader();
-    // if (!reader) {
-    //   return;
-    // }
-    // const decoder = new TextDecoder();
-    // while (true) {
-    //   const { done, value } = await reader.read();
-    //   if (done) {
-    //     break;
-    //   }
-    //   const text = decoder.decode(value, { stream: true });
-    //   console.log(text);
-    // }
-    await submit({
-      query: data.message,
-    });
+    await onSendMessage(data.message);
   });
 
   return (
     <Form {...form}>
-      <ul>
-        {messages.map((msg) => (
-          <li key={msg.id}>{String(msg.content)}</li>
-        ))}
-      </ul>
       <form onSubmit={handleSubmit} className="flex relative h-full w-full p-2">
         <div className="flex relative w-full">
           <FormField
