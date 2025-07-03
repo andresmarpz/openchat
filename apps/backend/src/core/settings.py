@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Database settings
     DATABASE_URL: str = Field(
-        "postgresql://user:password@localhost:5432/openchat",
+        "postgresql+asyncpg://user:password@localhost:5432/openchat",
         description="PostgreSQL database URL",
     )
 

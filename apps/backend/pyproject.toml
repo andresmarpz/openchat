@@ -8,8 +8,8 @@ dependencies = [
     "fastapi>=0.115.12",
     "uvicorn[standard]>=0.30.5",
     "poethepoet>=0.27.0",
-    "sqlalchemy>=2.0.40",
-    "psycopg2-binary>=2.9.10",
+    "sqlalchemy[asyncio]>=2.0.40",
+    "asyncpg>=0.30.0",
     "alembic>=1.15.2",
     "pydantic>=2.11.3",
     "pydantic-settings>=2.9.1",
@@ -21,8 +21,12 @@ dependencies = [
     "openai>=1.91.0",
     "langchain-openai>=0.3.25",
     "supabase>=2.10.0",
+    "psycopg2-binary>=2.9.10",
 ]
 package-mode = true
+packages = [
+    {include = "src"},
+]
 
 [dependency-groups]
 dev = [

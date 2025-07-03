@@ -1,5 +1,5 @@
-from fastapi import Request, HTTPException
-from fastapi.security import HTTPBearer
+from fastapi import HTTPException, Request
+
 from src.core.auth import auth_service
 
 

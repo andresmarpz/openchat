@@ -29,23 +29,23 @@ class SupabaseAuthService:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            return await self._verify_token(token)
+            return await self.verify_token(token)
 
         # Try to get token from cookies
         cookie_token = request.cookies.get("sb-access-token")
         if cookie_token:
-            return await self._verify_token(cookie_token)
+            return await self.verify_token(cookie_token)
 
         # Try to get token from custom header
         custom_token = request.headers.get("X-Supabase-Token")
         if custom_token:
-            return await self._verify_token(custom_token)
+            return await self.verify_token(custom_token)
 
         raise HTTPException(
             status_code=401, detail="No valid authentication token found"
         )
 
-    async def _verify_token(self, token: str) -> dict:
+    async def verify_token(self, token: str) -> dict:
         """Verify a JWT token and return user data.
 
         Args:
