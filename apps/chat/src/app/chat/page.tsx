@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "~/lib/supabase/server";
 import { InfoIcon } from "lucide-react";
 import Chat from "~/components/chat/chat";
+import Test from "~/app/chat/test";
 
 export default async function ChatPage() {
   const supabase = await createClient();
@@ -31,6 +32,8 @@ export default async function ChatPage() {
       <div>
         <Chat />
       </div>
+
+      <Test />
     </div>
   );
 }
