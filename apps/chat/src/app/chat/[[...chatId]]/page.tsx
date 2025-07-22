@@ -1,20 +1,13 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createClient } from "~/lib/supabase/server";
 import Chat from "~/components/chat/chat";
 
-export default async function ChatPage() {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    redirect("/auth/login");
-  }
-
+export default function ChatPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="flex-grow"></div>
-      <Chat />
+      <div className="flex-grow">
+        <Chat />
+      </div>
     </div>
   );
 }

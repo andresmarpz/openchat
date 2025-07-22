@@ -7,6 +7,13 @@ import { openrouter } from "../../ai/router";
 import { streamText } from "ai";
 import { randomUUIDv7 } from "bun";
 
+export interface Message {
+  id: string;
+  type: "human" | "ai";
+  content: string;
+  created_at: string;
+}
+
 export const threadsRouter = trpcRouter({
   create: protectedProcedure
     .input(
@@ -55,29 +62,17 @@ export const threadsRouter = trpcRouter({
     )
     .mutation(async function* ({ input, ctx }) {
       const initial_date = new Date().toISOString();
-      const thread = input.thread_id
-        ? await db
-            .select({
-              thread_id: threads.thread_id,
-              user_id: threads.user_id,
-              title: threads.title,
-              values: threads.values,
-              metadata: threads.metadata,
-            })
-            .from(threads)
-            .where(eq(threads.thread_id, input.thread_id))
-            .execute()
-            .then((res) => res[0])
-        : (
-            await db
-              .insert(threads)
-              .values({
-                title: "New thread",
-                user_id: ctx.user!.id,
-              })
-              .onConflictDoNothing()
-              .returning()
-          )[0];
+      const thread = (
+        await db
+          .insert(threads)
+          .values({
+            title: "New thread",
+            user_id: ctx.user!.id,
+            thread_id: input.thread_id,
+          })
+          .onConflictDoNothing()
+          .returning()
+      )[0];
 
       if (!thread) {
         throw new Error("Failed to create or find thread");
@@ -108,7 +103,7 @@ export const threadsRouter = trpcRouter({
                 ...(thread.values?.messages ?? []),
                 {
                   id: randomUUIDv7(),
-                  type: "user",
+                  type: "human",
                   content: input.message,
                   created_at: initial_date,
                 },
@@ -118,7 +113,7 @@ export const threadsRouter = trpcRouter({
                   content: response,
                   created_at: new Date().toISOString(),
                 },
-              ],
+              ] satisfies Message[],
             },
           })
           .where(eq(threads.thread_id, thread.thread_id))

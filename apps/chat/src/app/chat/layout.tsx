@@ -1,11 +1,19 @@
+import { redirect } from "next/navigation";
 import { AuthButton } from "~/components/auth/auth-button";
 import { SidebarLayout } from "~/components/dashboard/sidebar";
+import { createClient } from "~/lib/supabase/server";
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) {
+    redirect("/auth/login");
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="w-full flex justify-end border-b border-b-foreground/10 h-16 px-4">
