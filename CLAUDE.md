@@ -1,111 +1,75 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Development Commands
 
-## APIs
+### Root Level (Turborepo)
+- `bun dev` - Start all applications in parallel via Turbo
+- `bun install` - Install dependencies for all workspaces
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+### API Server (`apps/api/`)
+- `bun run dev` - Start API server with hot reloading on port 4000
+- `bun run db:generate` - Generate Drizzle migrations from schema
+- `bun run db:migrate` - Apply database migrations
+- `bun run db:studio` - Open Drizzle Studio for database management
 
-## Testing
+### Frontend (`apps/chat/`)
+- `bun run dev` - Start Next.js development server with Turbopack
+- `bun run build` - Build production application
+- `bun run start` - Start production server
+- `bun run lint` - Run ESLint
 
-Use `bun test` to run tests.
+## Architecture Overview
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+OpenChat is a monorepo containing a TypeScript API server and Next.js frontend for LLM chat interactions.
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
+### Project Structure
+- **`apps/api/`** - Hono.js API server with tRPC and AI streaming
+- **`apps/chat/`** - Next.js 15 frontend with Tailwind CSS
+- **`apps/docs/`** - Documentation (minimal)
 
-## Frontend
+### Technology Stack
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+#### Backend (`apps/api/`)
+- **Runtime**: Bun (not Node.js)
+- **Framework**: Hono.js with tRPC server integration
+- **Database**: PostgreSQL with Drizzle ORM
+- **AI**: Vercel AI SDK with OpenRouter provider
+- **Authentication**: Supabase Auth integration
 
-Server:
+#### Frontend (`apps/chat/`)
+- **Framework**: Next.js 15 with App Router
+- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **State**: React hooks with tRPC React Query integration
+- **Auth**: Supabase client-side authentication
 
-```ts#index.ts
-import index from "./index.html"
+### Key Architecture Details
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+#### Database Schema
+- Uses Drizzle ORM with PostgreSQL
+- Main entity: `threads` table with user relationships via Supabase auth
+- Schema located in `apps/api/src/db/schema/`
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+#### tRPC API Routes
+- **`threads.create`** - Create new chat thread
+- **`threads.get_all`** - Get user's threads
+- **`threads.chat`** - Send message and stream AI response
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+#### AI Integration
+- Uses Vercel AI SDK's `streamText` with OpenRouter
+- Streams responses via tRPC mutations
+- Default model: `openai/gpt-4o-mini`
 
-With the following `frontend.tsx`:
+#### Frontend Communication
+- Uses tRPC client for API communication
+- AI responses streamed via tRPC subscriptions
+- Authentication handled via Supabase client
 
-```tsx#frontend.tsx
-import React from "react";
+## Important Notes
 
-// import .css files directly and it works
-import './index.css';
-
-import { createRoot } from "react-dom/client";
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+- **Always use Bun** instead of Node.js, npm, or other package managers
+- **Database migrations** must be generated with `bun run db:generate` before applying
+- **Environment variables** are auto-loaded by Bun (no dotenv needed in API)
+- **Supabase integration** requires proper environment variables for both apps
+- **AI responses** are streamed, not returned as single responses

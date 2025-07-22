@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { MessageCircle, Plus, Settings, User } from "lucide-react"
+import { MessageCircle, Plus, Settings, User } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,48 +16,25 @@ import {
   SidebarMenuSkeleton,
   SidebarProvider,
   SidebarTrigger,
-} from "~/components/ui/sidebar"
-import { Button } from "~/components/ui/button"
-
-const mockThreads = [
-  {
-    id: "1",
-    title: "How to implement authentication in Next.js",
-    lastMessage: "Let me help you set up authentication...",
-    timestamp: "2 hours ago",
-    isActive: true,
-  },
-  {
-    id: "2", 
-    title: "React state management patterns",
-    lastMessage: "There are several approaches to state management...",
-    timestamp: "1 day ago",
-    isActive: false,
-  },
-  {
-    id: "3",
-    title: "Database design for chat application",
-    lastMessage: "For a chat application, you'll want to consider...",
-    timestamp: "2 days ago",
-    isActive: false,
-  },
-  {
-    id: "4",
-    title: "Deployment strategies for Node.js apps",
-    lastMessage: "Here are the most common deployment options...",
-    timestamp: "3 days ago",
-    isActive: false,
-  },
-  {
-    id: "5",
-    title: "CSS Grid vs Flexbox comparison",
-    lastMessage: "Both CSS Grid and Flexbox have their uses...",
-    timestamp: "1 week ago",
-    isActive: false,
-  },
-]
+} from "~/components/ui/sidebar";
+import { Button } from "~/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useTRPC } from "~/query/client";
+import Link from "next/link";
 
 export function AppSidebar() {
+  const trpc = useTRPC();
+  const { data: threads } = useQuery(trpc.thread.get_all.queryOptions());
+
+  const formattedThreads = threads?.map((thread) => ({
+    id: thread.thread_id,
+    title: thread.title,
+    lastMessage: thread?.values?.["messages"]?.[0]?.content ?? "No messages",
+    timestamp:
+      thread.updated_at?.toString() ?? thread.created_at?.toString() ?? "",
+    isActive: false,
+  }));
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -70,7 +47,7 @@ export function AppSidebar() {
           New Chat
         </Button>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Search</SidebarGroupLabel>
@@ -81,32 +58,36 @@ export function AppSidebar() {
             />
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>Recent Threads</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mockThreads.map((thread) => (
-                <SidebarMenuItem key={thread.id}>
-                  <SidebarMenuButton
-                    isActive={thread.isActive}
-                    className="flex flex-col items-start gap-1 p-3 h-auto"
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <MessageCircle className="size-4 shrink-0" />
-                      <span className="font-medium truncate">{thread.title}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground pl-6 w-full">
-                      <p className="truncate">{thread.lastMessage}</p>
-                      <p className="text-xs mt-1">{thread.timestamp}</p>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {formattedThreads?.map((thread) => (
+                <Link key={"side_" + thread.id} href={`/chat/${thread.id}`}>
+                  <SidebarMenuItem key={thread.id}>
+                    <SidebarMenuButton
+                      isActive={thread.isActive}
+                      className="flex flex-col items-start gap-1 p-3 h-auto"
+                    >
+                      <div className="flex items-center gap-2 w-full">
+                        <MessageCircle className="size-4 shrink-0" />
+                        <span className="font-medium truncate">
+                          {thread.title}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground pl-6 w-full">
+                        <p className="truncate">{thread.lastMessage}</p>
+                        <p className="text-xs mt-1">{thread.timestamp}</p>
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </Link>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>Loading Example</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -120,7 +101,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -138,7 +119,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
@@ -150,10 +131,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           <SidebarTrigger />
           <h1 className="text-lg font-semibold">Chat</h1>
         </div>
-        <div className="p-4 h-full overflow-auto">
-          {children}
-        </div>
+        <div className="p-4 h-full overflow-auto">{children}</div>
       </main>
     </SidebarProvider>
-  )
+  );
 }

@@ -1,13 +1,19 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { createTRPCClient, httpBatchLink, loggerLink } from "@trpc/client";
-import { createTRPCContext } from "@trpc/tanstack-react-query";
+import {
+  createTRPCClient,
+  httpBatchLink,
+  httpBatchStreamLink,
+  loggerLink,
+  splitLink,
+} from "@trpc/client";
 import { useState } from "react";
 import { makeQueryClient } from "~/query/query-client";
 import { AppRouter } from "@openchat/api/src/trpc/routers";
 import superjson from "superjson";
 import { createClient } from "~/lib/supabase/client";
+import { createTRPCContext } from "@trpc/tanstack-react-query";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
@@ -51,20 +57,40 @@ export function TRPCReactProvider(
   const [trpcClient] = useState(() =>
     createTRPCClient<AppRouter>({
       links: [
-        httpBatchLink({
-          transformer: superjson,
-          url: getUrl(),
-          async headers() {
-            const supabase = createClient();
-
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-
-            return {
-              Authorization: `Bearer ${session?.access_token}`,
-            };
+        splitLink({
+          condition: (op) => {
+            return op.type === "mutation" && op.path === "thread.chat";
           },
+          true: httpBatchStreamLink({
+            transformer: superjson,
+            url: getUrl(),
+            async headers() {
+              const supabase = createClient();
+
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+
+              return {
+                Authorization: `Bearer ${session?.access_token}`,
+              };
+            },
+          }),
+          false: httpBatchLink({
+            transformer: superjson,
+            url: getUrl(),
+            async headers() {
+              const supabase = createClient();
+
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+
+              return {
+                Authorization: `Bearer ${session?.access_token}`,
+              };
+            },
+          }),
         }),
         loggerLink({
           enabled: (opts) =>
@@ -76,10 +102,10 @@ export function TRPCReactProvider(
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
+    <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
         {props.children}
-      </TRPCProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </TRPCProvider>
   );
 }

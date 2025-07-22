@@ -6,7 +6,7 @@ import { createClient } from "~/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export function useThread() {
+export function useThread(threadId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const client = createClient();
 
