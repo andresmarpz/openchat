@@ -37,11 +37,11 @@ function getQueryClient() {
 function getUrl() {
   const base = (() => {
     if (typeof window !== "undefined") return "";
+    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-    return process.env.NEXT_PUBLIC_API_URL;
+    throw new Error("No API URL found");
   })();
-  console.log(base);
-  return `http://localhost:4000/trpc`;
+  return `${base}/trpc`;
 }
 
 export function TRPCReactProvider(
