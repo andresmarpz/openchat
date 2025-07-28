@@ -1,10 +1,8 @@
 import { z } from "zod/v4";
 import { publicProcedure, trpcRouter } from "../init";
-import { createHTTPServer } from "@trpc/server/adapters/standalone";
-import { threadsRouter } from "./thread";
+import { chatsRouter } from "./chat";
 
 export const appRouter = trpcRouter({
-  // ...
   hello: publicProcedure.query(async () => {
     return {
       data: "hello",
@@ -17,7 +15,7 @@ export const appRouter = trpcRouter({
       data: users,
     };
   }),
-  thread: threadsRouter,
+  chat: chatsRouter,
 });
 // Export type router type signature,
 // NOT the router itself.

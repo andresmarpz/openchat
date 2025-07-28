@@ -1,6 +1,6 @@
 {
-  "id": "aeb4d72f-76d6-4eec-a961-b888fd227124",
-  "prevId": "9e58a29a-7771-42ae-ac02-07aab682b104",
+  "id": "e40b69ac-09f3-4fd7-b324-d8cb88043c58",
+  "prevId": "aeb4d72f-76d6-4eec-a961-b888fd227124",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -518,6 +518,14 @@
     }
   },
   "enums": {
+    "public.chat_message_role": {
+      "name": "chat_message_role",
+      "schema": "public",
+      "values": [
+        "human",
+        "ai"
+      ]
+    },
     "public.message_parts_type": {
       "name": "message_parts_type",
       "schema": "public",

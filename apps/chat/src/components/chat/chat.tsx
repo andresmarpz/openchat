@@ -10,20 +10,16 @@ import { useState, useRef } from "react";
 import InputBox from "~/components/primitives/InputBox";
 import { useTRPC } from "~/query/client";
 import { inferOutput } from "@trpc/tanstack-react-query";
-import { useParams, useRouter } from "next/navigation";
 
-const generateUUID = async () => await import("uuid").then((m) => m.v7());
+interface Props {
+  threadId?: string;
+}
 
-export default function Chat() {
-  const router = useRouter();
+export default function Chat({ threadId }: Props) {
+  const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [currentResponse, setCurrentResponse] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const responseRef = useRef("");
-
-  const params = useParams();
-  let threadId = Array.isArray(params.chatId)
-    ? params.chatId[0]
-    : params.chatId;
 
   const trpc = useTRPC();
   type ThreadQueryData = inferOutput<typeof trpc.thread.get>;
@@ -31,23 +27,67 @@ export default function Chat() {
   const queryClient = useQueryClient();
 
   const { data: thread } = useQuery({
-    queryKey: trpc.thread.get.queryKey({ threadId: threadId! }),
+    queryKey: trpc.thread.get.queryKey({ threadId: currentThreadId! }),
     queryFn: async (...args) => {
       const result = await trpc.thread.get
-        .queryOptions({ threadId: threadId! })
+        .queryOptions({ threadId: currentThreadId! })
         .queryFn?.(...args);
 
       return result ?? null;
     },
-    enabled: !!threadId,
+    enabled: !!currentThreadId,
     placeholderData: keepPreviousData,
   });
-  console.log("thread", thread);
 
   const messages = thread?.values?.["messages"] ?? [];
-  console.log(messages);
 
-  const { mutateAsync } = useMutation(trpc.thread.chat.mutationOptions());
+  const { mutate } = useMutation({
+    mutationKey: trpc.thread.chat.mutationKey(),
+    mutationFn: async (input: { message: string; thread_id: string }) => {
+      addMessage(
+        {
+          id: await generateUUID(),
+          type: "human" as const,
+          content: input.message,
+          created_at: new Date().toISOString(),
+        },
+        input.thread_id
+      );
+
+      setIsStreaming(true);
+      setCurrentResponse("");
+      responseRef.current = "";
+
+      const result = await trpc.thread.chat
+        .mutationOptions()
+        .mutationFn?.(input);
+      if (!result) {
+        throw new Error("No result from chat");
+      }
+
+      for await (const chunk of result) {
+        if (chunk?.type === "messages/partial") {
+          responseRef.current += chunk.data.content ?? "";
+          setCurrentResponse(responseRef.current);
+        } else if (chunk?.type === "messages") {
+          addMessage(
+            {
+              id: chunk.data.id,
+              type: "ai",
+              content: chunk.data.content,
+              created_at: new Date().toISOString(),
+            },
+            input.thread_id
+          );
+          setCurrentResponse("");
+          setIsStreaming(false);
+          break;
+        }
+      }
+
+      return result;
+    },
+  });
 
   function addMessage(message: Message, threadId: string) {
     const setter = (old: ThreadQueryData | undefined) =>
@@ -60,68 +100,26 @@ export default function Chat() {
       } satisfies ThreadQueryData);
 
     const queryKey = trpc.thread.get.queryKey({ threadId });
-    console.log("queryKey", queryKey);
 
     queryClient.setQueryData(queryKey, (old) => {
-      console.log("old", old);
       const newData = setter(old);
-      console.log("newData", newData);
       return newData;
     });
   }
 
-  async function handleSubmit(input: string) {
-    if (!threadId) {
-      threadId = await generateUUID();
-      router.replace(`/chat/${threadId}`);
-      console.log("Created thread:", threadId);
+  const handleSubmit = async (input: string) => {
+    const newUUID = await generateUUID();
+    if (!currentThreadId) {
+      setCurrentThreadId(newUUID);
+      window.history.pushState({}, "", `/chat/${newUUID}`);
+      console.log("Created thread:", newUUID);
     }
 
-    addMessage(
-      {
-        id: await generateUUID(),
-        type: "human" as const,
-        content: input,
-        created_at: new Date().toISOString(),
-      },
-      threadId
-    );
-
-    // queryClient.invalidateQueries({
-    //   queryKey: trpc.thread.get.queryKey({ threadId: threadId! }),
-    // });
-
-    // setIsStreaming(true);
-    // setCurrentResponse("");
-    // responseRef.current = "";
-
-    // const result = await mutateAsync({
-    //   message: input,
-    //   thread_id: threadId,
-    // });
-
-    // for await (const chunk of result) {
-    //   console.log(chunk);
-    //   if (chunk?.type === "thread/set") {
-    //     continue;
-    //   } else if (chunk?.type === "messages/partial") {
-    //     responseRef.current += chunk.content;
-    //     setCurrentResponse(responseRef.current);
-    //   } else if (chunk?.type === "messages") {
-    //     addMessage({
-    //       id: await generateUUID(),
-    //       type: "ai",
-    //       content: responseRef.current,
-    //       created_at: new Date().toISOString(),
-    //     });
-    //     setCurrentResponse("");
-    //     setIsStreaming(false);
-    //   } else if (chunk?.type === "end") {
-    //     console.log("finished!");
-    //     break;
-    //   }
-    // }
-  }
+    mutate({
+      message: input,
+      thread_id: currentThreadId ?? newUUID,
+    });
+  };
 
   return (
     <div>

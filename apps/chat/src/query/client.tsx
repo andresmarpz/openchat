@@ -10,7 +10,7 @@ import {
 } from "@trpc/client";
 import { useState } from "react";
 import { makeQueryClient } from "~/query/query-client";
-import { AppRouter } from "@openchat/api/src/trpc/routers";
+import { AppRouter } from "@openchat/api/src/trpc/routers/_app";
 import superjson from "superjson";
 import { createClient } from "~/lib/supabase/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
@@ -34,9 +34,8 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-function getUrl() {
+export function getUrl() {
   const base = (() => {
-    if (typeof window !== "undefined") return "";
     if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     throw new Error("No API URL found");
@@ -59,7 +58,7 @@ export function TRPCReactProvider(
       links: [
         splitLink({
           condition: (op) => {
-            return op.type === "mutation" && op.path === "thread.chat";
+            return op.type === "mutation" && op.path === "chat.chat";
           },
           true: httpBatchStreamLink({
             transformer: superjson,

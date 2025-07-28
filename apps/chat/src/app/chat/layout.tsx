@@ -1,28 +1,20 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AuthButton } from "~/components/auth/auth-button";
-import { SidebarLayout } from "~/components/dashboard/sidebar";
-import { createClient } from "~/lib/supabase/server";
 
-export default async function ProtectedLayout({
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    redirect("/auth/login");
-  }
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col container m-auto">
       <nav className="w-full flex justify-end border-b border-b-foreground/10 h-16 px-4">
-        <AuthButton />
+        <Suspense fallback={<div>Loading...</div>}>
+          <AuthButton />
+        </Suspense>
       </nav>
 
-      <div className="flex-1 flex">
-        <SidebarLayout>{children}</SidebarLayout>
-      </div>
+      <div className="flex-1 flex">{children}</div>
 
       <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-4">
         <p>Powered by openchat</p>
