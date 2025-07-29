@@ -10,7 +10,7 @@ import {
 } from "@trpc/client";
 import { useState } from "react";
 import { makeQueryClient } from "~/query/query-client";
-import { AppRouter } from "@openchat/api/src/trpc/routers/_app";
+import { AppRouter } from "@openchat/api/src/trpc/";
 import superjson from "superjson";
 import { createClient } from "~/lib/supabase/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";

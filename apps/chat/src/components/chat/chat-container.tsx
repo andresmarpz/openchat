@@ -2,15 +2,21 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import ChatMessage from "~/components/chat/chat-message";
 import InputBox from "~/components/primitives/InputBox";
 import { createClient } from "~/lib/supabase/client";
+import { v7 } from "uuid";
+import { useRouter } from "next/navigation";
 
 interface Props {
   chatId?: string;
 }
 
 export default function ChatContainer({ chatId }: Props) {
-  const { messages, sendMessage, status } = useChat({
+  const router = useRouter();
+  const { id, messages, sendMessage } = useChat({
+    ...(chatId ? { id: chatId } : {}),
+    generateId: v7,
     transport: new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
       headers: async () => {
@@ -30,9 +36,12 @@ export default function ChatContainer({ chatId }: Props) {
     },
   });
 
-  console.log(status, messages);
-
   const onSendMessage = async (message: string) => {
+    const shouldRedirect = !id && window.location.pathname.startsWith("/chat/");
+    if (shouldRedirect) {
+      window.history.pushState(null, "", `/chat/${id}`);
+    }
+
     await sendMessage({
       parts: [{ type: "text", text: message }],
     });
@@ -42,11 +51,7 @@ export default function ChatContainer({ chatId }: Props) {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => {
-          return (
-            <div key={message.id}>
-              <pre>{JSON.stringify(message, null, 2)}</pre>
-            </div>
-          );
+          return <ChatMessage key={message.id} message={message} />;
         })}
       </div>
 
